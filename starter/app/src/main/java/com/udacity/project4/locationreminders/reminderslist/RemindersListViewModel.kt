@@ -7,6 +7,7 @@ import com.udacity.project4.base.BaseViewModel
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
+import com.udacity.project4.utils.wrapEspressoIdlingResource
 import kotlinx.coroutines.launch
 
 class RemindersListViewModel(
@@ -42,12 +43,23 @@ class RemindersListViewModel(
                     })
                     remindersList.value = dataList
                 }
-                is Result.Error ->
+                is Result.Error -> {
+                    showErrorMessage.value = result.message
                     showSnackBar.value = result.message
+                }
             }
 
             //check if no data has to be shown
             invalidateShowNoData()
+        }
+    }
+
+    fun deleteAllReminders() {
+        wrapEspressoIdlingResource {
+            viewModelScope.launch {
+                dataSource.deleteAllReminders()
+                loadReminders()
+            }
         }
     }
 

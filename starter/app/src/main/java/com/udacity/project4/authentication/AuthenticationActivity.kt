@@ -1,8 +1,19 @@
 package com.udacity.project4.authentication
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
+import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import com.firebase.ui.auth.AuthUI
+import com.firebase.ui.auth.IdpResponse
+import com.google.firebase.auth.FirebaseAuth
 import com.udacity.project4.R
+import com.udacity.project4.locationreminders.RemindersActivity
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 /**
  * This class should be the starting point of the app, It asks the users to sign in / register, and redirects the
@@ -10,15 +21,62 @@ import com.udacity.project4.R
  */
 class AuthenticationActivity : AppCompatActivity() {
 
+    val viewModel by viewModels<FirebaseViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_authentication)
-//         TODO: Implement the create account and sign in using FirebaseUI, use sign in using email and sign in using Google
 
-//          TODO: If the user was authenticated, send him to RemindersActivity
+        val buttonLogin = findViewById<Button>(R.id.buttonLogin)
 
-//          TODO: a bonus is to customize the sign in flow to look nice using :
-        //https://github.com/firebase/FirebaseUI-Android/blob/master/auth/README.md#custom-layout
 
+        viewModel.authenticationState.observe(this, Observer { authenticationState ->
+            when(authenticationState) {
+                FirebaseViewModel.AuthenticationState.AUTHENTICADED -> {
+                    val intent = Intent(this, RemindersActivity::class.java)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    startActivity(intent)
+                }
+
+                FirebaseViewModel.AuthenticationState.UNAUTHENTICADED -> {
+                    buttonLogin.setOnClickListener { login() }
+                }
+            }
+
+        })
+
+    }
+
+    private fun login() {
+        val providers = arrayListOf(
+            AuthUI.IdpConfig.EmailBuilder().build(),
+            AuthUI.IdpConfig.GoogleBuilder().build()
+        )
+
+        startActivityForResult(
+            AuthUI.getInstance()
+                .createSignInIntentBuilder()
+                .setAvailableProviders(providers)
+                .setLogo(R.drawable.map)
+                .build(), SIGN_IN_REQUEST_CODE
+        )
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == SIGN_IN_REQUEST_CODE) {
+            val response = IdpResponse.fromResultIntent(data)
+            if (resultCode == Activity.RESULT_OK) {
+                Toast.makeText(this, "Welcome ${FirebaseAuth.getInstance().currentUser?.displayName}", Toast.LENGTH_SHORT).show()
+            }
+            else {
+                Toast.makeText(this, response?.error?.message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    companion object {
+        val SIGN_IN_REQUEST_CODE = 999
     }
 }

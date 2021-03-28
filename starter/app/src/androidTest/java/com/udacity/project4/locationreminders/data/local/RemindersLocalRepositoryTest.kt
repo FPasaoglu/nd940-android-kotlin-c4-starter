@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.CoreMatchers.`is`
-import org.hamcrest.CoreMatchers.instanceOf
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.After
 import org.junit.Before
@@ -25,6 +24,62 @@ import org.junit.runner.RunWith
 @MediumTest
 class RemindersLocalRepositoryTest {
 
-//    TODO: Add testing implementation to the RemindersLocalRepository.kt
+    private lateinit var database: RemindersDatabase
+    private lateinit var repository: RemindersLocalRepository
 
+    @get:Rule
+    var instantTaskExecutorRule = InstantTaskExecutorRule()
+
+    private val reminder = ReminderDTO(
+        "Mardin",
+        "memory with my family",
+        "Cag Urfa Sofrası",
+        36.79,
+        37.45,
+        "12345"
+    )
+
+    @Before
+    fun initDB() {
+        database = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            RemindersDatabase::class.java
+        ).allowMainThreadQueries().build()
+
+        repository = RemindersLocalRepository(database.reminderDao(), Dispatchers.Main)
+    }
+
+    @After
+    fun closeDB() {
+        database.close()
+    }
+
+    @Test
+    fun saveReminder_checkEqualToRepository() = runBlocking {
+        repository.saveReminder(reminder)
+
+        val remindersListFromRepo = (repository.getReminders() as Result.Success).data
+
+        assertThat(remindersListFromRepo[0].id, `is`(reminder.id))
+        assertThat(remindersListFromRepo[0].title, `is`(reminder.title))
+        assertThat(remindersListFromRepo[0].description, `is`(reminder.description))
+        assertThat(remindersListFromRepo[0].latitude, `is`(reminder.latitude))
+        assertThat(remindersListFromRepo[0].longitude, `is`(reminder.longitude))
+        assertThat(remindersListFromRepo[0].location, `is`(reminder.location))
+
+    }
+
+    @Test
+    fun deleteAllReminders_checkIsEmpty() = runBlocking {
+
+        repository.saveReminder(reminder)
+
+        var remindersListFromRepo = (repository.getReminders() as Result.Success).data
+
+        repository.deleteAllReminders()
+
+        remindersListFromRepo = (repository.getReminders() as Result.Success).data
+
+        assertThat(remindersListFromRepo, `is`(emptyList()))
+    }
 }
